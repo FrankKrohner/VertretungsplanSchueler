@@ -52,12 +52,21 @@ function isTeacher($username) {
 }
 
 function isStudent($username) {
-    return !isTeacher($username) && preg_match('/^[a-z]+\d+[a-z]+$/i', $username);
+    // Schüler: Username enthält mindestens eine Zahl
+    // Zwei Fälle:
+    // 1) Klasse 5-10: Username hat Zahl + Buchstabe (z.B. mxmlnmckz8a)
+    // 2) Oberstufe 11-13: Username endet mit Zahl (z.B. hnnngl13)
+    return !isTeacher($username) && preg_match('/\d/', $username);
 }
 
 function extractClassFromUsername($username) {
+    // Fall 1: Zahl + Buchstabe am Ende (z.B. mxmlnmckz8a → 8A, lilhfnr10b → 10B)
     if (preg_match('/(\d+[a-z]+)$/i', $username, $matches)) {
         return strtoupper($matches[1]);
+    }
+    // Fall 2: Nur Zahl am Ende für Oberstufe (z.B. hnnngl13 → 13, student12 → 12)
+    if (preg_match('/(\d+)$/i', $username, $matches)) {
+        return $matches[1];
     }
     return null;
 }
@@ -1386,22 +1395,37 @@ function getNextWorkdayDate($date, $direction = 1) {
     if ($istVerlegung):
       ?>
       <?php if ($isStudentView): ?>
-        <?php if (isset($vertretung['substituteTeacher']) && !empty($vertretung['substituteTeacher'])): ?>
-          <?= htmlspecialchars($vertretung['substituteTeacher']) ?>
-        <?php elseif (isset($vertretung['originalTeacher']) && !empty($vertretung['originalTeacher'])): ?>
-          <?= htmlspecialchars($vertretung['originalTeacher']) ?>
+        <?php
+        // Für Schüler Klasse 5-10: Fach anzeigen statt Klasse
+        if (!isOberstufenClass($studentClass) && isset($vertretung['subject']) && !empty($vertretung['subject'])):
+        ?>
+          <?= htmlspecialchars($vertretung['subject']) ?> •
+        <?php else: ?>
+          <?php if (isset($vertretung['substituteTeacher']) && !empty($vertretung['substituteTeacher'])): ?>
+            <?= htmlspecialchars($vertretung['substituteTeacher']) ?>
+          <?php elseif (isset($vertretung['originalTeacher']) && !empty($vertretung['originalTeacher'])): ?>
+            <?= htmlspecialchars($vertretung['originalTeacher']) ?>
+          <?php endif; ?>
+          •
         <?php endif; ?>
-       • <?= htmlspecialchars($vertretung['time']) ?>
+        <?= htmlspecialchars($vertretung['time']) ?>
       <?php else: ?>
         <?= htmlspecialchars($vertretung['class']) ?> • <?= htmlspecialchars($vertretung['time']) ?>
       <?php endif; ?>
     <?php else:
       ?>
       <?php if ($isStudentView): ?>
-        <?php if (isset($vertretung['substituteTeacher']) && !empty($vertretung['substituteTeacher']) && $vertretung['type'] === 'substitution'): ?>
-          <?= htmlspecialchars($vertretung['substituteTeacher']) ?> •
-        <?php elseif (isset($vertretung['originalTeacher']) && !empty($vertretung['originalTeacher'])): ?>
-          <?= htmlspecialchars($vertretung['originalTeacher']) ?> •
+        <?php
+        // Für Schüler Klasse 5-10: Fach anzeigen statt Klasse
+        if (!isOberstufenClass($studentClass) && isset($vertretung['subject']) && !empty($vertretung['subject'])):
+        ?>
+          <?= htmlspecialchars($vertretung['subject']) ?> •
+        <?php else: ?>
+          <?php if (isset($vertretung['substituteTeacher']) && !empty($vertretung['substituteTeacher']) && $vertretung['type'] === 'substitution'): ?>
+            <?= htmlspecialchars($vertretung['substituteTeacher']) ?> •
+          <?php elseif (isset($vertretung['originalTeacher']) && !empty($vertretung['originalTeacher'])): ?>
+            <?= htmlspecialchars($vertretung['originalTeacher']) ?> •
+          <?php endif; ?>
         <?php endif; ?>
         <?= htmlspecialchars($vertretung['time']) ?>
       <?php else: ?>
