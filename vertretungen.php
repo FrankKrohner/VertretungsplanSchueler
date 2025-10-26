@@ -505,13 +505,14 @@ function processRaumbuchungen($teacherId, $dayOfWeek, $date) {
 }
 
 // NEUE Funktion: GPU014.TXT laden und parsen
-function loadGPU014($teacherId, $date) {
+function loadGPU014($teacherId, $date, $isStudentView = false) {
     global $debugInfo;
-    
+
     $debugInfo[] = "=== GPU014 LADEN START ===";
     $debugInfo[] = "Datum: " . $date->format('Y-m-d') . " (Woche " . $date->format('W') . ")";
     $debugInfo[] = "Teacher ID: '$teacherId'";
-    
+    $debugInfo[] = "Is Student View: " . ($isStudentView ? "Yes" : "No");
+
     // GPU014.TXT laden
     $url = 'https://smg-adlersberg.de/koordination/GPU014.TXT';
     $context = stream_context_create([
@@ -521,43 +522,51 @@ function loadGPU014($teacherId, $date) {
             "timeout" => 10
         ]
     ]);
-    
+
     $content = @file_get_contents($url, false, $context);
     if ($content === false) {
         $debugInfo[] = "FEHLER: Konnte GPU014.TXT nicht laden";
         return [];
     }
-    
+
     $debugInfo[] = "GPU014.TXT erfolgreich geladen. Länge: " . strlen($content) . " Bytes";
-    
+
     $vertretungen = [];
     $lines = explode("\n", $content);
     $targetDateString = $date->format('Ymd'); // Format: 20250929
-    
+
     $debugInfo[] = "Suche nach Datum: $targetDateString";
     $debugInfo[] = "Anzahl Zeilen in GPU014.TXT: " . count($lines);
-    
+
     $relevantLines = 0;
-    
+
     foreach ($lines as $lineNum => $line) {
         $line = trim($line);
         if (empty($line)) continue;
-        
+
         // CSV-Parsing für GPU014-Format
         $parts = str_getcsv($line);
-        
+
         if (count($parts) >= 20) {
             $datumInFile = trim($parts[1], '"'); // Position 1: Datum
             $stundeInFile = trim($parts[2], '"'); // Position 2: Stunde
             $alterLehrer = trim($parts[5], '"'); // Position 5: Alter Lehrer
             $neuerLehrer = trim($parts[6], '"'); // Position 6: Neuer Lehrer (bei Vertretung)
-            
+            $klasse = trim($parts[14], '"'); // Position 14: Klasse
+
             // Prüfen ob das Datum übereinstimmt
             if ($datumInFile === $targetDateString) {
-                // Prüfen ob der Lehrer betroffen ist (entweder als alter oder neuer Lehrer)
-                $istBetroffen = (strtoupper($alterLehrer) === strtoupper($teacherId)) || 
-                               (strtoupper($neuerLehrer) === strtoupper($teacherId));
-                
+                // Prüfen ob betroffen
+                if ($isStudentView) {
+                    // Für Schüler: Nach Klassenstufe filtern
+                    $istBetroffen = (strtoupper($klasse) === strtoupper($teacherId));
+                    $debugInfo[] = "Schüleransicht: Vergleiche Klasse '$klasse' mit '$teacherId': " . ($istBetroffen ? "MATCH" : "kein Match");
+                } else {
+                    // Für Lehrer: Nach Lehrer-Kürzel filtern
+                    $istBetroffen = (strtoupper($alterLehrer) === strtoupper($teacherId)) ||
+                                   (strtoupper($neuerLehrer) === strtoupper($teacherId));
+                }
+
                 if ($istBetroffen) {
                     $vertretungen[] = $line;
                     $relevantLines++;
@@ -566,10 +575,10 @@ function loadGPU014($teacherId, $date) {
             }
         }
     }
-    
+
     $debugInfo[] = "Relevante GPU014-Zeilen für $teacherId am $targetDateString gefunden: $relevantLines";
     $debugInfo[] = "=== GPU014 LADEN ENDE ===";
-    
+
     return $vertretungen;
 }
 
@@ -1001,7 +1010,7 @@ $currentWeekType = loadCurrentWeekType();
 $dateWeekType = getWeekTypeForDate($currentDate, $currentWeekType);
 
 // GPU014-Vertretungsdaten laden
-$alleVertretungen = loadGPU014($displayTeacherId, $currentDate);
+$alleVertretungen = loadGPU014($displayTeacherId, $currentDate, $isStudentView);
 
 // Klausuren für das gewählte Datum laden
 $selectedDateString = $currentDate->format('Y-m-d');
