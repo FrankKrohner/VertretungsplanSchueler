@@ -1055,7 +1055,8 @@ foreach ($alleVertretungen as $vertretungLine) {
             if (isset($vertretung['class'])) {
                 $vertretungClass = $vertretung['class'];
                 if (isOberstufenClass($studentClass)) {
-                    if (isset($vertretung['subject'])) {
+                    // Für Oberstufe: Prüfe Jahrgangsstufe UND ob Kurs belegt wird
+                    if ($vertretungClass === $studentClass && isset($vertretung['subject'])) {
                         $subject = $vertretung['subject'];
                         foreach ($studentCourses as $course) {
                             if (stripos($course, $subject) !== false || stripos($subject, $course) !== false) {
