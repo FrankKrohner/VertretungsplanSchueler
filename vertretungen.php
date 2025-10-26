@@ -1055,15 +1055,17 @@ foreach ($alleVertretungen as $vertretungLine) {
             if (isset($vertretung['class'])) {
                 $vertretungClass = $vertretung['class'];
                 if (isOberstufenClass($studentClass)) {
-                    // Klassenstufe prüfen: Vertretung muss für die richtige Klassenstufe sein
-                    if ($vertretungClass === $studentClass) {
-                        if (isset($vertretung['subject'])) {
-                            $subject = $vertretung['subject'];
-                            foreach ($studentCourses as $course) {
-                                if (stripos($course, $subject) !== false || stripos($subject, $course) !== false) {
-                                    $matchesStudent = true;
-                                    break;
-                                }
+                    // Für Oberstufe: Prüfe ob der Kurs direkt in der Kursliste des Schülers ist
+                    if (in_array($vertretungClass, $studentCourses)) {
+                        $matchesStudent = true;
+                    }
+                    // Falls nicht gefunden: Prüfe über das Fach
+                    if (!$matchesStudent && isset($vertretung['subject'])) {
+                        $subject = $vertretung['subject'];
+                        foreach ($studentCourses as $course) {
+                            if (stripos($course, $subject) !== false || stripos($subject, $course) !== false) {
+                                $matchesStudent = true;
+                                break;
                             }
                         }
                     }
